@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [-] 1. Set up core fee insights module structure
+- [x] 1. Set up core fee insights module structure
   - Create `src/insights/` directory with module files
   - Define core data structures and enums for fee insights
   - Set up error types specific to insights operations
@@ -8,13 +8,13 @@
   - _Requirements: 4.1, 4.2, 4.3_
 
 - [ ] 2. Implement fee data abstraction layer
-  - [ ] 2.1 Create FeeDataProvider trait and FeeDataPoint struct
+  - [x] 2.1 Create FeeDataProvider trait and FeeDataPoint struct
     - Define trait interface for data source independence
     - Implement FeeDataPoint with all required fields
     - Create provider error types and result handling
     - _Requirements: 4.1_
 
-  - [ ] 2.2 Implement HorizonFeeDataProvider adapter
+  - [x] 2.2 Implement HorizonFeeDataProvider adapter
     - Create adapter that implements FeeDataProvider for HorizonClient
     - Transform HorizonFeeStats into FeeDataPoint format
     - Handle data conversion and error mapping

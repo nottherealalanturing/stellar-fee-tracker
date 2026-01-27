@@ -10,8 +10,12 @@ pub mod detector;
 pub mod types;
 pub mod error;
 pub mod config;
+pub mod provider;
+pub mod horizon_adapter;
 
 pub use engine::FeeInsightsEngine;
 pub use types::*;
 pub use error::InsightsError;
 pub use config::InsightsConfig;
+pub use provider::{FeeDataProvider, ProviderMetadata};
+pub use horizon_adapter::HorizonFeeDataProvider;
