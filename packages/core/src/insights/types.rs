@@ -104,7 +104,7 @@ pub enum TrendStrength {
 }
 
 /// Severity classification for fee spikes
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum SpikeSeverity {
     Minor,
     Moderate,

@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5ad5d8559f9b8357c4993bc32f499c7b74b08e1bd8b860977d6719988b8cd814 # shrinks to fee_points = [FeeDataPoint { fee_amount: 100, timestamp: 2026-01-27T17:52:48.303253242Z, transaction_hash: "a0aaaa000aaa000a000a00000aa0aa0a0aaaa0a00aaaa00000a0000a0aaa00a0", ledger_sequence: 1 }]

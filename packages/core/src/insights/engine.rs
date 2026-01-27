@@ -103,7 +103,7 @@ impl FeeInsightsEngine {
     }
     
     /// Validate fee data for basic correctness
-    fn validate_fee_data(&self, data: &[FeeDataPoint]) -> Result<(), InsightsError> {
+    pub fn validate_fee_data(&self, data: &[FeeDataPoint]) -> Result<(), InsightsError> {
         for (i, fee_point) in data.iter().enumerate() {
             // Check for reasonable fee amounts (not zero, not excessively large)
             if fee_point.fee_amount == 0 {

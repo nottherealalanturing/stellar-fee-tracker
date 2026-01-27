@@ -251,7 +251,7 @@ impl CongestionDetector {
     }
     
     /// Classify the severity of a spike based on its ratio to baseline
-    fn classify_spike_severity(&self, spike_ratio: f64) -> SpikeSeverity {
+    pub fn classify_spike_severity(&self, spike_ratio: f64) -> SpikeSeverity {
         match spike_ratio {
             r if r >= 10.0 => SpikeSeverity::Critical,
             r if r >= 5.0 => SpikeSeverity::Major,
