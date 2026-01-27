@@ -1,0 +1,130 @@
+//! Core data types for fee insights
+
+use chrono::{DateTime, Utc, Duration};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+/// A single fee data point from the blockchain
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeeDataPoint {
+    pub fee_amount: u64,
+    pub timestamp: DateTime<Utc>,
+    pub transaction_hash: String,
+    pub ledger_sequence: u64,
+}
+
+/// Complete insights data structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurrentInsights {
+    pub rolling_averages: RollingAverages,
+    pub extremes: FeeExtremes,
+    pub congestion_trends: CongestionTrends,
+    pub last_updated: DateTime<Utc>,
+    pub data_quality: DataQuality,
+}
+
+/// Rolling averages across different time windows
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RollingAverages {
+    pub short_term: AverageResult,    // 1 hour
+    pub medium_term: AverageResult,   // 6 hours
+    pub long_term: AverageResult,     // 24 hours
+}
+
+/// Result of a rolling average calculation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AverageResult {
+    pub value: f64,
+    pub sample_count: usize,
+    pub is_partial: bool,
+    pub calculated_at: DateTime<Utc>,
+    pub time_window: TimeWindow,
+}
+
+/// Time window configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct TimeWindow {
+    pub name: String,
+    pub duration: Duration,
+    pub min_samples: usize,
+}
+
+/// Fee extremes (min/max) tracking
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeeExtremes {
+    pub current_min: ExtremeValue,
+    pub current_max: ExtremeValue,
+    pub period_start: DateTime<Utc>,
+    pub period_end: DateTime<Utc>,
+}
+
+/// An extreme fee value with metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtremeValue {
+    pub value: u64,
+    pub timestamp: DateTime<Utc>,
+    pub transaction_hash: String,
+}
+
+/// Congestion trend analysis results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CongestionTrends {
+    pub current_trend: TrendIndicator,
+    pub recent_spikes: Vec<FeeSpike>,
+    pub trend_strength: TrendStrength,
+    pub predicted_duration: Option<Duration>,
+}
+
+/// A detected fee spike
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeeSpike {
+    pub peak_fee: u64,
+    pub baseline_fee: f64,
+    pub spike_ratio: f64,
+    pub start_time: DateTime<Utc>,
+    pub duration: Duration,
+    pub severity: SpikeSeverity,
+}
+
+/// Trend indicator for congestion
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TrendIndicator {
+    Normal,
+    Rising,
+    Congested,
+    Declining,
+}
+
+/// Strength of a congestion trend
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TrendStrength {
+    Weak,
+    Moderate,
+    Strong,
+}
+
+/// Severity classification for fee spikes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SpikeSeverity {
+    Minor,
+    Moderate,
+    Major,
+    Critical,
+}
+
+/// Data quality indicators
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataQuality {
+    pub completeness: f64,  // 0.0 to 1.0
+    pub freshness: Duration,
+    pub has_gaps: bool,
+    pub last_gap: Option<DateTime<Utc>>,
+}
+
+/// Update result from processing fee data
+#[derive(Debug, Clone)]
+pub struct InsightsUpdate {
+    pub insights: CurrentInsights,
+    pub processing_time: Duration,
+    pub data_points_processed: usize,
+}
