@@ -1,12 +1,21 @@
 mod cli;
 mod config;
 mod error;
+mod insights;
 mod logging;
 mod services;
 mod scheduler;
 
 use clap::Parser;
 use dotenvy::dotenv;
+use tokio::time::{interval, Duration};
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use axum::{
+    routing::get,
+    Router,
+};
+use tower_http::cors::CorsLayer;
 
 use crate::cli::Cli;
 use crate::config::Config;
