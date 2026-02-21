@@ -59,7 +59,7 @@ pub struct FeeCharged {
     pub avg: String,
 }
 
-
+// Issue #04: implemented fetch_latest_transaction and fetch_operations
 impl HorizonClient {
     pub async fn fetch_fee_stats(&self) -> Result<HorizonFeeStats, AppError> {
         let url = format!("{}/fee_stats", self.base_url);
