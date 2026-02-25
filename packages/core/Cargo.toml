@@ -7,6 +7,10 @@ edition = "2021"
 name = "stellar-fee-tracker"
 path = "src/main.rs"
 
+[lib]
+name = "stellar_fee_tracker"
+path = "src/lib.rs"
+
 [dependencies]
 # Web framework
 axum = { version = "0.7", features = ["json"] }
@@ -45,8 +49,13 @@ sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio-native-tls", "mac
 # Async trait support (required for dyn-compatible async traits)
 async-trait = "0.1"
 
+# Metrics
+prometheus = "0.13"
+
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
 proptest = "1"
 tokio-test = "0.4"
-tower = "0.5"
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+wiremock = "0.5"
