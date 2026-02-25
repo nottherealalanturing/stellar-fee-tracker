@@ -23,6 +23,7 @@ use crate::insights::error::ProviderError;
 use crate::insights::types::FeeDataPoint;
 use crate::repository::FeeRepository;
 use crate::store::FeeHistoryStore;
+use crate::metrics::AppMetrics;
 
 /// Run the fee polling loop until Ctrl+C is received.
 /// Uses defaults for retry and retention — prefer `run_fee_polling_with_retry` in production.
@@ -41,6 +42,7 @@ pub async fn run_fee_polling(
         1000,
         None,
         7,
+        None,
     )
     .await
 }
@@ -56,6 +58,7 @@ pub async fn run_fee_polling_with_retry(
     base_retry_delay_ms: u64,
     repository: Option<Arc<FeeRepository>>,
     storage_retention_days: u64,
+    metrics: Option<Arc<AppMetrics>>,
 ) {
     let mut interval = time::interval(Duration::from_secs(poll_interval_seconds));
 
@@ -77,6 +80,7 @@ pub async fn run_fee_polling_with_retry(
                     base_retry_delay_ms,
                     repository.as_deref(),
                     storage_retention_days,
+                    metrics.as_deref(),
                 ).await;
             }
 
@@ -99,7 +103,12 @@ async fn poll_once(
     base_retry_delay_ms: u64,
     repository: Option<&FeeRepository>,
     storage_retention_days: u64,
+    metrics: Option<&AppMetrics>,
 ) {
+    if let Some(m) = metrics {
+        m.polls_total.inc();
+    }
+
     let points = match fetch_with_retry(
         horizon_provider.as_ref(),
         max_retry_attempts,
@@ -109,6 +118,9 @@ async fn poll_once(
     {
         Some(p) => p,
         None => {
+            if let Some(m) = metrics {
+                m.poll_errors_total.inc();
+            }
             tracing::warn!(
                 "All {} retry attempts exhausted — skipping tick",
                 max_retry_attempts
@@ -128,7 +140,11 @@ async fn poll_once(
         for point in &points {
             store.push(point.clone());
         }
-        tracing::debug!("Store now holds {} data points", store.len());
+        let store_len = store.len();
+        tracing::debug!("Store now holds {} data points", store_len);
+        if let Some(m) = metrics {
+            m.fee_points_stored.set(store_len as f64);
+        }
     }
 
     // Run insights engine
@@ -141,6 +157,10 @@ async fn poll_once(
                     update.data_points_processed,
                     update.insights.rolling_averages.short_term.value,
                 );
+                if let Some(m) = metrics {
+                    m.current_avg_fee.set(update.insights.rolling_averages.short_term.value);
+                    m.spikes_detected_total.inc_by(update.insights.recent_spikes.len() as f64);
+                }
             }
             Err(err) => {
                 tracing::error!("Insights engine error: {}", err);
@@ -255,7 +275,7 @@ mod tests {
         let store = make_shared_store();
         let engine = make_shared_engine();
 
-        poll_once(&provider, &store, &engine, 3, 0, None, 7).await;
+        poll_once(&provider, &store, &engine, 3, 0, None, 7, None).await;
 
         assert_eq!(store.read().await.len(), 3);
     }
@@ -268,7 +288,7 @@ mod tests {
         let store = make_shared_store();
         let engine = make_shared_engine();
 
-        poll_once(&provider, &store, &engine, 3, 0, None, 7).await;
+        poll_once(&provider, &store, &engine, 3, 0, None, 7, None).await;
 
         assert!(engine.read().await.get_last_update().is_some());
     }
@@ -281,7 +301,7 @@ mod tests {
         let store = make_shared_store();
         let engine = make_shared_engine();
 
-        poll_once(&provider, &store, &engine, 1, 0, None, 7).await;
+        poll_once(&provider, &store, &engine, 1, 0, None, 7, None).await;
 
         assert!(store.read().await.is_empty());
     }
@@ -294,8 +314,8 @@ mod tests {
         let store = make_shared_store();
         let engine = make_shared_engine();
 
-        poll_once(&provider, &store, &engine, 3, 0, None, 7).await;
-        poll_once(&provider, &store, &engine, 3, 0, None, 7).await;
+        poll_once(&provider, &store, &engine, 3, 0, None, 7, None).await;
+        poll_once(&provider, &store, &engine, 3, 0, None, 7, None).await;
 
         assert_eq!(store.read().await.len(), 4);
     }
@@ -307,7 +327,7 @@ mod tests {
         let store = make_shared_store();
         let engine = make_shared_engine();
 
-        poll_once(&provider, &store, &engine, 3, 0, None, 7).await;
+        poll_once(&provider, &store, &engine, 3, 0, None, 7, None).await;
 
         assert!(store.read().await.is_empty());
     }

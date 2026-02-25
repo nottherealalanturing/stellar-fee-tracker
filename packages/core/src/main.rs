@@ -2,7 +2,9 @@
 // Suppress dead-code warnings until then rather than deleting valid future code.
 #![allow(dead_code)]
 
+mod alerts;
 mod api;
+mod metrics;
 mod cli;
 mod config;
 mod db;
@@ -25,6 +27,7 @@ use tokio::sync::RwLock;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::cli::Cli;
+use crate::metrics::AppMetrics;
 use crate::config::Config;
 use crate::error::AppError;
 use crate::insights::{FeeInsightsEngine, InsightsConfig, HorizonFeeDataProvider};
@@ -63,6 +66,14 @@ async fn main() {
             std::process::exit(1);
         });
     tracing::info!("Database initialised: {}", config.database_url);
+
+    // ---- Metrics ----
+    let app_metrics = Arc::new(
+        AppMetrics::new().unwrap_or_else(|err| {
+            tracing::error!("Failed to initialise Prometheus metrics: {}", err);
+            std::process::exit(1);
+        }),
+    );
 
     let repository = Arc::new(FeeRepository::new(db_pool));
 
@@ -147,10 +158,47 @@ async fn main() {
             insights_engine: Some(insights_engine.clone()),
         }));
 
+    // Clone for metrics endpoint closure
+    let metrics_for_handler = app_metrics.clone();
+
     let app = Router::new()
         .route("/health", get(api::health::health))
+        .route(
+            "/metrics",
+            get(move || {
+                let m = metrics_for_handler.clone();
+                async move {
+                    match m.render() {
+                        Ok(body) => axum::response::Response::builder()
+                            .status(200)
+                            .header(
+                                axum::http::header::CONTENT_TYPE,
+                                "text/plain; version=0.0.4",
+                            )
+                            .body(axum::body::Body::from(body))
+                            .unwrap(),
+                        Err(err) => {
+                            tracing::error!("Failed to render metrics: {}", err);
+                            axum::response::Response::builder()
+                                .status(500)
+                                .body(axum::body::Body::from("metrics error"))
+                                .unwrap()
+                        }
+                    }
+                }
+            }),
+        )
         .merge(fees_router)
         .merge(api::insights::create_insights_router(insights_engine.clone()))
+        .merge(
+            Router::new()
+                .route("/alerts/config", axum::routing::post(api::alerts::create_alert))
+                .route("/alerts/config", axum::routing::get(api::alerts::list_alerts))
+                .route("/alerts/config/:id", axum::routing::patch(api::alerts::update_alert))
+                .route("/alerts/config/:id", axum::routing::delete(api::alerts::delete_alert))
+                .route("/alerts/history", axum::routing::get(api::alerts::get_alert_history))
+                .with_state(repository.clone()),
+        )
         .layer(cors);
 
     // ---- TCP listener ----
@@ -180,6 +228,7 @@ async fn main() {
             config.base_retry_delay_ms,
             Some(repository),
             config.storage_retention_days,
+            Some(app_metrics),
         ),
     );
 
